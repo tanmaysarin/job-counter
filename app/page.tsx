@@ -1,101 +1,205 @@
-import Image from "next/image";
+// @ts-nocheck
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Calendar, Plus, Minus, RefreshCw } from 'lucide-react';
+
+const Counter = () => {
+  const [totalCount, setTotalCount] = useState(0);
+  const [history, setHistory] = useState({});
+
+  useEffect(() => {
+    const savedCount = localStorage.getItem('totalCount');
+    setTotalCount(savedCount ? Math.max(0, parseInt(savedCount)) : 0);
+
+    const savedHistory = localStorage.getItem('applicationHistory');
+    setHistory(savedHistory ? JSON.parse(savedHistory) : {});
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('totalCount', totalCount.toString());
+    localStorage.setItem('applicationHistory', JSON.stringify(history));
+  }, [totalCount, history]);
+
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+
+  const updateHistory = (changeAmount) => {
+    const today = getTodayDate();
+    const timestamp = new Date().toISOString();
+    const todayRecord = history[today] || { count: totalCount, changes: [] };
+    
+    const updatedHistory = {
+      ...history,
+      [today]: {
+        count: Math.max(0, totalCount + changeAmount),
+        changes: [...todayRecord.changes, { amount: changeAmount, timestamp }]
+      }
+    };
+    
+    setHistory(updatedHistory);
+  };
+
+  const increment = () => {
+    setTotalCount(prev => prev + 1);
+    updateHistory(1);
+  };
+
+  const decrement = () => {
+    if (totalCount > 0) {
+      setTotalCount(prev => Math.max(0, prev - 1));
+      updateHistory(-1);
+    }
+  };
+
+  const reset = () => {
+    setTotalCount(0);
+    const today = getTodayDate();
+    const updatedHistory = {
+      ...history,
+      [today]: {
+        count: 0,
+        changes: [...(history[today]?.changes || []), { amount: 'reset', timestamp: new Date().toISOString() }]
+      }
+    };
+    setHistory(updatedHistory);
+  };
+
+  const getTodayApplications = () => {
+    const today = getTodayDate();
+    const todayRecord = history[today];
+    if (!todayRecord) return 0;
+    
+    return Math.max(0, todayRecord.changes.reduce((total, change) => {
+      return change.amount === 'reset' ? 0 : total + (change.amount || 0);
+    }, 0));
+  };
+
+  const getHistoryWithTotals = () => {
+    return Object.entries(history)
+      .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+      .map(([date, data], index, array) => {
+        const runningTotal = array
+          .slice(index)
+          .reduce((total, [_, dayData]) => {
+            const dayCount = dayData.changes.reduce((sum, change) => {
+              return change.amount === 'reset' ? 0 : sum + (change.amount || 0);
+            }, 0);
+            return total + dayCount;
+          }, 0);
+
+        return {
+          date,
+          dailyCount: data.changes.reduce((sum, change) => {
+            return change.amount === 'reset' ? 0 : sum + (change.amount || 0);
+          }, 0),
+          runningTotal
+        };
+      });
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen bg-neutral-900 flex flex-col touch-manipulation">
+      <div className="safe-top bg-neutral-900" /> {/* Safe area for notches */}
+      
+      <Card className="flex-1 mx-4 my-4 bg-neutral-800 border-neutral-700 shadow-lg">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-center text-white flex items-center justify-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Jobs Applied
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          {/* Main counter display */}
+          <div className="flex flex-col items-center">
+            <div className="text-6xl font-bold text-white mb-8">{totalCount}</div>
+            
+            {/* Large, touch-friendly buttons */}
+            <div className="flex gap-4 w-full max-w-xs">
+              <Button 
+                onClick={decrement}
+                variant="outline"
+                className="flex-1 h-16 text-xl bg-neutral-700 hover:bg-neutral-600 text-white border-neutral-600 active:scale-95 transition-transform"
+                disabled={totalCount === 0}
+              >
+                <Minus className="w-6 h-6" />
+              </Button>
+              
+              <Button 
+                onClick={increment}
+                variant="outline"
+                className="flex-1 h-16 text-xl bg-neutral-700 hover:bg-neutral-600 text-white border-neutral-600 active:scale-95 transition-transform"
+              >
+                <Plus className="w-6 h-6" />
+              </Button>
+            </div>
+            
+            {/* Reset button */}
+            <Button 
+              onClick={reset}
+              variant="destructive"
+              className="w-full max-w-xs mt-4 h-12 active:scale-95 transition-transform"
+              disabled={totalCount === 0}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          {/* Today's counter */}
+          <div className="bg-neutral-700 rounded-lg p-4 mx-4">
+            <h3 className="text-white text-base font-medium mb-2">Today's Applications</h3>
+            <div className="text-center">
+              <span className="text-3xl font-bold text-white">
+                {getTodayApplications()}
+              </span>
+              <span className="text-neutral-400 text-sm ml-2">today</span>
+            </div>
+          </div>
+
+          {/* History table with touch-friendly sizing */}
+          <div className="mx-4">
+            <h3 className="text-white text-base font-medium mb-2">History</h3>
+            <div className="bg-neutral-700 rounded-lg p-2 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-white">
+                  <thead>
+                    <tr className="border-b border-neutral-600">
+                      <th className="text-left p-3 text-sm">Date</th>
+                      <th className="text-right p-3 text-sm">Daily</th>
+                      <th className="text-right p-3 text-sm">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getHistoryWithTotals().map((entry) => (
+                      <tr 
+                        key={entry.date} 
+                        className="border-b border-neutral-600 last:border-0"
+                      >
+                        <td className="p-3 text-sm">
+                          {new Date(entry.date).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </td>
+                        <td className="text-right p-3 text-sm">{entry.dailyCount}</td>
+                        <td className="text-right p-3 text-sm">{entry.runningTotal}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <div className="safe-bottom bg-neutral-900" /> {/* Safe area for home indicator */}
     </div>
   );
-}
+};
+
+export default Counter;

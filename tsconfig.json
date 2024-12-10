@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "noEmitOnError": false,   // Disable emission of output files when there are errors
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,

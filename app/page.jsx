@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -82,7 +81,7 @@ const Counter = () => {
       .map(([date, data], index, array) => {
         const runningTotal = array
           .slice(index)
-          .reduce((total, [_, dayData]) => {
+          .reduce((total, [, dayData]) => {
             const dayCount = dayData.changes.reduce((sum, change) => {
               return change.amount === 'reset' ? 0 : sum + (change.amount || 0);
             }, 0);
@@ -150,7 +149,7 @@ const Counter = () => {
 
           {/* Today's counter */}
           <div className="bg-neutral-700 rounded-lg p-4 mx-4">
-            <h3 className="text-white text-base font-medium mb-2">Today's Applications</h3>
+            <h3 className="text-white text-base font-medium mb-2">Today&apos;s Applications</h3>
             <div className="text-center">
               <span className="text-3xl font-bold text-white">
                 {getTodayApplications()}
